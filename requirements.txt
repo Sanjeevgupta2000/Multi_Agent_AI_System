@@ -9,6 +9,8 @@ langchain-core
 langchain-community
 langchain-mistralai
 langgraph
+torch
+torchvision
 
 # APIs
 tavily-python
