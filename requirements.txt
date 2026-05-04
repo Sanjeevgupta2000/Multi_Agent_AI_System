@@ -1,0 +1,55 @@
+# Core LLM stack
+streamlit
+reportlab
+langsmith
+httpx
+pygments
+langchain
+langchain-core
+langchain-community
+langchain-mistralai
+langgraph
+
+# APIs
+tavily-python
+
+# Scraping
+beautifulsoup4
+requests
+lxml
+playwright
+
+# Async / networking
+httpx
+aiohttp
+
+# Backend framework
+fastapi
+uvicorn
+
+# Data & validation
+pydantic
+pandas
+numpy
+
+# Env management
+python-dotenv
+
+# Retry / robustness
+tenacity
+
+# Vector DB (RAG support)
+faiss-cpu
+chromadb
+
+# Embeddings
+sentence-transformers
+
+# Tokenizer
+tiktoken
+
+# Optional memory
+redis
+
+# Utilities
+typing-extensions
