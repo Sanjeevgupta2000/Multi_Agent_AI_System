@@ -2,124 +2,165 @@ import streamlit as st
 import time
 from agents import build_reader_agent, build_search_agent, writer_chain, critic_chain
 
-# ── Page config ──────────────────────────────────────────────────────────────
-st.set_page_config(
-    page_title="ResearchMind · AI Research Agent",
-    page_icon="🔬",
-    layout="wide",
-    initial_sidebar_state="collapsed",
-)
+# PDF
+from reportlab.platypus import SimpleDocTemplate, Paragraph
+from reportlab.lib.styles import getSampleStyleSheet
 
-# ── Custom CSS ────────────────────────────────────────────────────────────────
+# Graph
+from graphviz import Digraph
+
+# ── PAGE CONFIG ─────────────────────────────────────
+st.set_page_config(page_title="ResearchMind AI", page_icon="🔬", layout="wide")
+
+# ── DARK UI CSS ─────────────────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap');
+.stApp { background: #0a0a0f; color: #e8e4dc; }
 
-html, body, [class*="css"] {
-    font-family: 'DM Sans', sans-serif;
-    color: #e8e4dc;
+[data-testid="stTextInput"] input {
+    background: rgba(20,20,25,0.9);
+    color: white;
+    border: 1px solid rgba(255,140,50,0.4);
 }
 
-.stApp {
-    background: #0a0a0f;
-    background-image:
-        radial-gradient(ellipse 80% 50% at 20% -10%, rgba(255,140,50,0.12) 0%, transparent 60%),
-        radial-gradient(ellipse 60% 40% at 80% 110%, rgba(255,80,30,0.08) 0%, transparent 55%);
+.stButton>button {
+    background: linear-gradient(135deg, #ff8c32, #ff5a1a);
+    color: black;
+    font-weight: bold;
 }
 
-#MainMenu, footer, header { visibility: hidden; }
-.block-container { padding: 2rem 3rem 4rem; max-width: 1200px; }
-
-/* ── INPUT FIX (DARK + WHITE TEXT) ── */
-.stTextInput > div > div > input {
-    background: rgba(20, 20, 25, 0.9) !important;
-    border: 1px solid rgba(255,140,50,0.35) !important;
-    border-radius: 10px !important;
-    color: #ffffff !important;
-    font-family: 'DM Sans', sans-serif !important;
-    font-size: 1rem !important;
-    padding: 0.75rem 1rem !important;
-    transition: border-color 0.2s, box-shadow 0.2s !important;
-    backdrop-filter: blur(6px);
-}
-
-.stTextInput > div > div > input:focus {
-    border-color: #ff8c32 !important;
-    box-shadow: 0 0 0 3px rgba(255,140,50,0.2) !important;
-}
-
-.stTextInput > div > div > input::placeholder {
-    color: #888888 !important;
-}
-
-.stTextInput > label {
-    font-family: 'DM Mono', monospace !important;
-    font-size: 0.72rem !important;
-    letter-spacing: 0.15em !important;
-    text-transform: uppercase !important;
-    color: #ff8c32 !important;
-    font-weight: 500 !important;
-}
-
-/* Button */
-.stButton > button {
-    background: linear-gradient(135deg, #ff8c32 0%, #ff5a1a 100%) !important;
-    color: #0a0a0f !important;
-    font-weight: 700 !important;
-    border-radius: 10px !important;
-    padding: 0.7rem 2.2rem !important;
-    width: 100%;
-}
-
-/* Footer */
-.notice {
-    font-size: 0.7rem;
-    color: #605850;
-    text-align: center;
-    margin-top: 3rem;
-}
 </style>
 """, unsafe_allow_html=True)
 
-# ── UI ───────────────────────────────────────────────────────────────────────
-st.title("🔬 ResearchMind")
+# ── STREAMING FUNCTION ─────────────────────────────────────
+def stream_text(text, speed=0.01):
+    placeholder = st.empty()
+    full = ""
+    for ch in text:
+        full += ch
+        placeholder.markdown(full)
+        time.sleep(speed)
+    return full
 
-topic = st.text_input("Research Topic", placeholder="e.g. Quantum computing")
+# ── PDF FUNCTION ─────────────────────────────────────
+def create_pdf(text):
+    file_path = "report.pdf"
+    doc = SimpleDocTemplate(file_path)
+    styles = getSampleStyleSheet()
 
-run_btn = st.button("⚡ Run Research Pipeline")
+    content = []
+    for line in text.split("\n"):
+        content.append(Paragraph(line, styles["Normal"]))
 
-# ── Pipeline ─────────────────────────────────────────────────────────────────
-if run_btn:
-    if not topic.strip():
-        st.warning("Please enter a topic")
-    else:
-        with st.spinner("Running AI agents..."):
+    doc.build(content)
+    return file_path
+
+# ── GRAPH ─────────────────────────────────────
+def show_graph():
+    dot = Digraph()
+    dot.node("Search")
+    dot.node("Reader")
+    dot.node("Writer")
+    dot.node("Critic")
+
+    dot.edge("Search", "Reader")
+    dot.edge("Reader", "Writer")
+    dot.edge("Writer", "Critic")
+
+    st.graphviz_chart(dot)
+
+# ── SESSION STATE ─────────────────────────────────────
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+if "history" not in st.session_state:
+    st.session_state.history = []
+
+# ── SIDEBAR (HISTORY + GRAPH) ─────────────────────────
+with st.sidebar:
+    st.title("📚 History")
+
+    for item in st.session_state.history:
+        if st.button(item["topic"]):
+            st.write(item["report"])
+
+    st.markdown("---")
+    st.markdown("### 🔗 Agent Flow")
+    show_graph()
+
+# ── HEADER ─────────────────────────────────────
+st.title("🔬 ResearchMind AI")
+st.caption("Multi-Agent Research System")
+
+# ── CHAT HISTORY ─────────────────────────────────────
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
+
+# ── INPUT ─────────────────────────────────────
+prompt = st.chat_input("Enter research topic...")
+
+# ── MAIN PIPELINE ─────────────────────────────────────
+if prompt:
+    # user message
+    st.session_state.messages.append({"role": "user", "content": prompt})
+
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
+    # assistant
+    with st.chat_message("assistant"):
+        with st.spinner("Running AI Agents..."):
+
+            # STEP 1: SEARCH
             search_agent = build_search_agent()
             sr = search_agent.invoke({
-                "messages": [("user", f"Find info about {topic}")]
+                "messages": [("user", f"Find detailed info about {prompt}")]
             })
+            search_data = sr["messages"][-1].content
 
+            # STEP 2: READER
             reader_agent = build_reader_agent()
             rr = reader_agent.invoke({
-                "messages": [("user", sr["messages"][-1].content)]
+                "messages": [("user", search_data[:800])]
             })
+            reader_data = rr["messages"][-1].content
 
+            # STEP 3: WRITER
             report = writer_chain.invoke({
-                "topic": topic,
-                "research": rr["messages"][-1].content
+                "topic": prompt,
+                "research": reader_data
             })
 
+            # STREAM OUTPUT
+            st.markdown("### 📝 Report")
+            stream_text(report)
+
+            # STEP 4: CRITIC
             feedback = critic_chain.invoke({
                 "report": report
             })
 
-        st.success("Done!")
+            st.markdown("### 🧐 Feedback")
+            stream_text(feedback, speed=0.005)
 
-        st.subheader("Report")
-        st.write(report)
+            # PDF DOWNLOAD
+            pdf_file = create_pdf(report)
+            with open(pdf_file, "rb") as f:
+                st.download_button(
+                    "⬇ Download PDF",
+                    f,
+                    file_name="report.pdf"
+                )
 
-        st.subheader("Critic Feedback")
-        st.write(feedback)
+    # save messages
+    st.session_state.messages.append({
+        "role": "assistant",
+        "content": report
+    })
 
-# ── Footer ───────────────────────────────────────────────────────────────────
-st.markdown('<div class="notice">ResearchMind · Built with Streamlit</div>', unsafe_allow_html=True)
+    # save history
+    st.session_state.history.append({
+        "topic": prompt,
+        "report": report
+    })
